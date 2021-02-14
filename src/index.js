@@ -82,11 +82,11 @@ const resolvers = {
             path: result.secure_url,
           };
           arrayFiles.push(resultFile);
-          return arrayFiles;
         } catch (err) {
           console.log(err);
         }
       });
+      return arrayFiles;
     },
   },
 };
