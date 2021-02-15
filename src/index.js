@@ -75,6 +75,13 @@ const resolvers = {
       );
       const upload = await processUpload(file);
       console.log(upload);
+      const host = "http://localhost:4000/";
+
+      upload.path = upload.path.replace(
+        "/home/brian/Desktop/prueba-uploads/src/",
+        host
+      );
+
       return upload;
     },
 
