@@ -1,4 +1,6 @@
 const { ApolloServer, gql } = require("apollo-server");
+const shortid = require("shortid");
+const { mkdir, createWriteStream } = require("fs");
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
 const typeDefs = gql`
