@@ -84,6 +84,28 @@ const resolvers = {
 
       return upload;
     },
+    arrayUpload: async (parent, { files }) => {
+      await files.map(async (file) => {
+        mkdir(
+          pathDependencie.join(__dirname, "images"),
+          { recursive: true },
+          (err) => {
+            if (err) throw err;
+          }
+        );
+        const upload = await processUpload(file);
+        console.log(upload);
+        const host = "http://localhost:4000/";
+
+        upload.path = upload.path.replace(
+          "/home/brian/Desktop/prueba-uploads/src/",
+          host
+        );
+
+        arrayFiles.push(upload);
+      });
+      return arrayFiles;
+    },
 
     // singleUpload: async (parent, { file }) => {
     //   const { filename, createReadStream } = await file;
