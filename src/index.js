@@ -10,6 +10,7 @@ const typeDefs = gql`
   type Query {
     uploads: [File]
     hello: String
+    allUpload: [File]
   }
 
   type Mutation {
@@ -20,9 +21,9 @@ const typeDefs = gql`
 /* 
   TODO:
   * Subir imagenes a cloudinary (al menos una) [x]
-  * Subir ina imagen a la carpeta del server (al menos una) 
-  * Subir un arreglo de imagenes en el server
-
+  * Subir un arreglo de imagenes a cloudinary [x]
+  * Subir ina imagen a la carpeta del server (al menos una) []
+  * Subir un arreglo de imagenes en el server []
   */
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -35,6 +36,7 @@ const resolvers = {
   Query: {
     uploads: (parent, args) => {},
     hello: (parent, args) => "s",
+    allUpload: (parent, args) => arrayFiles,
   },
   Mutation: {
     singleUpload: async (parent, { file }) => {
@@ -75,6 +77,7 @@ const resolvers = {
           Momentananeamente se guarda en un array de files ya que es lo que retorna, 
           estos datos deben guardarse en un arreglo en la base de datos, usando una consulta Cypher 
           para el file type y asi se vaya creando el arraglo de file
+          Por cada uno de las imagenes se guarda en la bd la ruta
           */
           console.log(result);
           const resultFile = {
