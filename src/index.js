@@ -1,8 +1,13 @@
-const { ApolloServer, gql } = require("apollo-server");
+const { ApolloServer, gql } = require("apollo-server-express");
 const shortid = require("shortid");
 const { mkdir, createWriteStream } = require("fs");
+const pathDependencie = require("path");
+const cors = require("cors");
+const express = require("express");
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
+const app = express();
+
 const typeDefs = gql`
   type File {
     filename: String!
@@ -24,7 +29,7 @@ const typeDefs = gql`
   TODO:
   * Subir imagenes a cloudinary (al menos una) [x]
   * Subir un arreglo de imagenes a cloudinary [x]
-  * Subir ina imagen a la carpeta del server (al menos una) []
+  * Subir ina imagen a la carpeta del server (al menos una) [x]
   * Subir un arreglo de imagenes en el server []
   */
 cloudinary.config({
@@ -33,6 +38,25 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 const arrayFiles = [];
+const imageDir = pathDependencie.join(__dirname, "images");
+app.use("/images", express.static(imageDir)); // serve all files in the /images directory
+app.use(cors());
+const storeUpload = async ({ stream, filename, mimetype }) => {
+  const id = shortid.generate();
+  const path = `${__dirname}/images/${id}-${filename}`;
+  return new Promise((resolve, reject) =>
+    stream
+      .pipe(createWriteStream(path))
+      .on("finish", () => resolve({ id, path, filename, mimetype }))
+      .on("error", reject)
+  );
+};
+const processUpload = async (upload) => {
+  const { createReadStream, filename, mimetype } = await upload;
+  const stream = createReadStream();
+  const file = await storeUpload({ stream, filename, mimetype });
+  return file;
+};
 
 const resolvers = {
   Query: {
@@ -42,57 +66,71 @@ const resolvers = {
   },
   Mutation: {
     singleUpload: async (parent, { file }) => {
-      const { filename, createReadStream } = await file;
-      try {
-        const result = await new Promise((resolve, reject) => {
-          createReadStream().pipe(
-            cloudinary.uploader.upload_stream((error, imageUpload) => {
-              if (error) return reject(error);
-
-              resolve(imageUpload);
-            })
-          );
-        });
-
-        return {
-          filename,
-          path: result.secure_url,
-        };
-      } catch (err) {
-        console.log(err);
-      }
-    },
-    arrayUpload: async (parent, { files }) => {
-      await files.map(async (file) => {
-        const { filename, createReadStream } = await file;
-        try {
-          const result = await new Promise((resolve, reject) => {
-            createReadStream().pipe(
-              cloudinary.uploader.upload_stream((error, imageUpload) => {
-                if (error) return reject(error);
-
-                resolve(imageUpload);
-              })
-            );
-          });
-          /*  
-          Momentananeamente se guarda en un array de files ya que es lo que retorna, 
-          estos datos deben guardarse en un arreglo en la base de datos, usando una consulta Cypher 
-          para el file type y asi se vaya creando el arraglo de file
-          Por cada uno de las imagenes se guarda en la bd la ruta
-          */
-          console.log(result);
-          const resultFile = {
-            filename,
-            path: result.secure_url,
-          };
-          arrayFiles.push(resultFile);
-        } catch (err) {
-          console.log(err);
+      mkdir(
+        pathDependencie.join(__dirname, "images"),
+        { recursive: true },
+        (err) => {
+          if (err) throw err;
         }
-      });
-      return arrayFiles;
+      );
+      const upload = await processUpload(file);
+      console.log(upload);
+      return upload;
     },
+
+    // singleUpload: async (parent, { file }) => {
+    //   const { filename, createReadStream } = await file;
+    //   try {
+    //     const result = await new Promise((resolve, reject) => {
+    //       createReadStream().pipe(
+    //         cloudinary.uploader.upload_stream((error, imageUpload) => {
+    //           if (error) return reject(error);
+
+    //           resolve(imageUpload);
+    //         })
+    //       );
+    //     });
+
+    //     return {
+    //       filename,
+    //       path: result.secure_url,
+    //     };
+    //   } catch (err) {
+    //     console.log(err);
+    //   }
+    // },
+
+    // arrayUpload: async (parent, { files }) => {
+    //   await files.map(async (file) => {
+    //     const { filename, createReadStream } = await file;
+    //     try {
+    //       const result = await new Promise((resolve, reject) => {
+    //         createReadStream().pipe(
+    //           cloudinary.uploader.upload_stream((error, imageUpload) => {
+    //             if (error) return reject(error);
+
+    //             resolve(imageUpload);
+    //           })
+    //         );
+    //       });
+    //       /*
+    //       Momentananeamente se guarda en un array de files ya que es lo que retorna,
+    //       estos datos deben guardarse en un arreglo en la base de datos, usando una consulta Cypher
+    //       para el file type y asi se vaya creando el arraglo de file
+    //       Por cada uno de las imagenes se guarda en la bd la ruta
+    //       */
+    //       console.log(result);
+    //       const resultFile = {
+    //         filename,
+    //         path: result.secure_url,
+    //       };
+    //       arrayFiles.push(resultFile);
+    //     } catch (err) {
+    //       console.log(err);
+    //     }
+    //   });
+    //   return arrayFiles;
+    // },
   },
 };
 
@@ -100,7 +138,7 @@ const server = new ApolloServer({
   typeDefs,
   resolvers,
 });
-
-server.listen().then(({ url }) => {
-  console.log(`🚀 Server ready at ${url}`);
+server.applyMiddleware({ app });
+app.listen(4000, () => {
+  console.log(`🚀 server running @ http://localhost:4000`);
 });
