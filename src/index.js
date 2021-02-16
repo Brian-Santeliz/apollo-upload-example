@@ -25,6 +25,7 @@ const typeDefs = gql`
     singleUpload(file: Upload!): File!
     arrayUpload(files: [Upload]!): [File]!
     deleteUpload(filename: String!): String!
+    deleteArrayUpload(filename: [String]!): String!
   }
 `;
 /* 
@@ -35,6 +36,11 @@ const typeDefs = gql`
   * Subir un arreglo de imagenes en el server [x]
   * Creada carpeta images fuera de src y accedida a traves de el browser[x]
   * Creada carpeta images subida array y single images[x]
+  * Eliminada una imagen [x]
+  * Eliminada un Arreglo de  imagenes [x]
+  * Crear un Input FotoEntrada []
+  * Crear una propieda ID para las imagenes []
+  
 */
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -49,7 +55,10 @@ app.use("/images", express.static(imageDir));
 app.use(cors());
 const storeUpload = async ({ stream, filename, mimetype }) => {
   const id = shortid.generate();
-  const path = `images/${id}-${filename}`;
+  /* limpia el nombre del archivo y agrega guion  */
+  const { ext, name } = pathDependencie.parse(filename);
+  const cleanFilename = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+  const path = `images/${id}-${cleanFilename}${ext}`;
   return new Promise((resolve, reject) =>
     stream
       .pipe(createWriteStream(path))
@@ -103,6 +112,18 @@ const resolvers = {
       });
       console.log("Array:", arrayFiles);
       return arrayFiles;
+    },
+    deleteArrayUpload: async (parent, { filename }) => {
+      const pathDelete = pathDependencie.join(`images/`);
+      console.log(`${pathDelete}${filename}`);
+      filename.map((file) => {
+        unlink(`${pathDelete}${file}`, (e) => {
+          if (e) {
+            return console.log(`No se pudo eliminar ${e}`);
+          }
+        });
+      });
+      return "Ejemplo";
     },
 
     // singleUpload: async (parent, { file }) => {
