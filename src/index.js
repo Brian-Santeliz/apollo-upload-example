@@ -30,20 +30,23 @@ const typeDefs = gql`
   * Subir imagenes a cloudinary (al menos una) [x]
   * Subir un arreglo de imagenes a cloudinary [x]
   * Subir ina imagen a la carpeta del server (al menos una) [x]
-  * Subir un arreglo de imagenes en el server []
-  */
+  * Subir un arreglo de imagenes en el server [x]
+  * Creada carpeta images fuera de src y accedida a traves de el browser[x]
+*/
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
   api_secret: process.env.API_SECRET,
 });
 const arrayFiles = [];
-const imageDir = pathDependencie.join(__dirname, "images");
+const host = "http://localhost:4000/";
+
+const imageDir = pathDependencie.join(__dirname, "../images");
 app.use("/images", express.static(imageDir)); // serve all files in the /images directory
 app.use(cors());
 const storeUpload = async ({ stream, filename, mimetype }) => {
   const id = shortid.generate();
-  const path = `${__dirname}/images/${id}-${filename}`;
+  const path = `images/${id}-${filename}`;
   return new Promise((resolve, reject) =>
     stream
       .pipe(createWriteStream(path))
@@ -66,22 +69,11 @@ const resolvers = {
   },
   Mutation: {
     singleUpload: async (parent, { file }) => {
-      mkdir(
-        pathDependencie.join(__dirname, "images"),
-        { recursive: true },
-        (err) => {
-          if (err) throw err;
-        }
-      );
+      mkdir("images", { recursive: true }, (err) => {
+        if (err) throw err;
+      });
       const upload = await processUpload(file);
-      console.log(upload);
-      const host = "http://localhost:4000/";
-
-      upload.path = upload.path.replace(
-        "/home/brian/Desktop/prueba-uploads/src/",
-        host
-      );
-
+      upload.path = `${host}${upload.path}`;
       return upload;
     },
     arrayUpload: async (parent, { files }) => {
@@ -94,16 +86,11 @@ const resolvers = {
           }
         );
         const upload = await processUpload(file);
-        console.log(upload);
-        const host = "http://localhost:4000/";
-
-        upload.path = upload.path.replace(
-          "/home/brian/Desktop/prueba-uploads/src/",
-          host
-        );
-
+        upload.path = `${host}${upload.path}`;
         arrayFiles.push(upload);
+        console.log("file single", upload);
       });
+      console.log("Array:", arrayFiles);
       return arrayFiles;
     },
 
