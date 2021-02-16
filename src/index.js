@@ -1,6 +1,7 @@
 const { ApolloServer, gql } = require("apollo-server-express");
 const shortid = require("shortid");
-const { mkdir, createWriteStream } = require("fs");
+const { mkdir, createWriteStream, unlink } = require("fs");
+// const fs = require("fs-extra");
 const pathDependencie = require("path");
 const cors = require("cors");
 const express = require("express");
@@ -23,6 +24,7 @@ const typeDefs = gql`
   type Mutation {
     singleUpload(file: Upload!): File!
     arrayUpload(files: [Upload]!): [File]!
+    deleteUpload(filename: String!): String!
   }
 `;
 /* 
@@ -32,6 +34,7 @@ const typeDefs = gql`
   * Subir ina imagen a la carpeta del server (al menos una) [x]
   * Subir un arreglo de imagenes en el server [x]
   * Creada carpeta images fuera de src y accedida a traves de el browser[x]
+  * Creada carpeta images subida array y single images[x]
 */
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -42,7 +45,7 @@ const arrayFiles = [];
 const host = "http://localhost:4000/";
 
 const imageDir = pathDependencie.join(__dirname, "../images");
-app.use("/images", express.static(imageDir)); // serve all files in the /images directory
+app.use("/images", express.static(imageDir));
 app.use(cors());
 const storeUpload = async ({ stream, filename, mimetype }) => {
   const id = shortid.generate();
@@ -68,6 +71,18 @@ const resolvers = {
     allUpload: (parent, args) => arrayFiles,
   },
   Mutation: {
+    deleteUpload: async (parent, { filename }) => {
+      //RUTA DE LA CARPETA DONDE ESTA LAS IMAGENES, NO EL ENDPOINT PUBLIC
+      const pathDelete = pathDependencie.join(`images/`);
+      //NOMBRE DE CARPETA MAS NOMBRE DE LA IMAGEN
+      console.log(`${pathDelete}${filename}`);
+      unlink(`${pathDelete}${filename}`, (e) => {
+        if (e) {
+          throw e;
+        }
+      });
+      return "eliminaod";
+    },
     singleUpload: async (parent, { file }) => {
       mkdir("images", { recursive: true }, (err) => {
         if (err) throw err;
@@ -78,13 +93,9 @@ const resolvers = {
     },
     arrayUpload: async (parent, { files }) => {
       await files.map(async (file) => {
-        mkdir(
-          pathDependencie.join(__dirname, "images"),
-          { recursive: true },
-          (err) => {
-            if (err) throw err;
-          }
-        );
+        mkdir("images", { recursive: true }, (err) => {
+          if (err) throw err;
+        });
         const upload = await processUpload(file);
         upload.path = `${host}${upload.path}`;
         arrayFiles.push(upload);
