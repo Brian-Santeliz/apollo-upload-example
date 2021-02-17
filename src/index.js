@@ -13,6 +13,7 @@ const typeDefs = gql`
   type File {
     filename: String!
     path: String!
+    id: ID!
   }
 
   type Query {
@@ -23,9 +24,12 @@ const typeDefs = gql`
 
   type Mutation {
     singleUpload(file: Upload!): File!
-    arrayUpload(files: [Upload]!): [File]!
+    arrayUpload(files: [FotoEntrada]!): [File]!
     deleteUpload(filename: String!): String!
     deleteArrayUpload(filename: [String]!): String!
+  }
+  input FotoEntrada {
+    fotos: Upload!
   }
 `;
 /* 
@@ -38,7 +42,7 @@ const typeDefs = gql`
   * Creada carpeta images subida array y single images[x]
   * Eliminada una imagen [x]
   * Eliminada un Arreglo de  imagenes [x]
-  * Crear un Input FotoEntrada []
+  * Crear un Input FotoEntrada [x]
   * Crear una propieda ID para las imagenes []
   
 */
@@ -53,12 +57,18 @@ const host = "http://localhost:4000/";
 const imageDir = pathDependencie.join(__dirname, "../images");
 app.use("/images", express.static(imageDir));
 app.use(cors());
-const storeUpload = async ({ stream, filename, mimetype }) => {
-  const id = shortid.generate();
+const cleanFilename = (filename) => {
   /* limpia el nombre del archivo y agrega guion  */
   const { ext, name } = pathDependencie.parse(filename);
-  const cleanFilename = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-  const path = `images/${id}-${cleanFilename}${ext}`;
+  return {
+    cleanFile: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+    ext,
+  };
+};
+const storeUpload = async ({ stream, filename, mimetype }) => {
+  const { cleanFile, ext } = cleanFilename(filename);
+  const id = shortid.generate();
+  const path = `images/${id}-${cleanFile}${ext}`;
   return new Promise((resolve, reject) =>
     stream
       .pipe(createWriteStream(path))
@@ -101,7 +111,8 @@ const resolvers = {
       return upload;
     },
     arrayUpload: async (parent, { files }) => {
-      await files.map(async (file) => {
+      const [{ fotos }] = files;
+      await fotos.map(async (file) => {
         mkdir("images", { recursive: true }, (err) => {
           if (err) throw err;
         });
